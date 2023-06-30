@@ -1,6 +1,8 @@
 import numpy as np
 import torch
 
+from tools import replace_all
+
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, filename, seq_len=128, max_idx=2048, min_len=4):
@@ -15,7 +17,10 @@ class Dataset(torch.utils.data.Dataset):
             text = f.readlines()
 
         text = filter(lambda s: len(s) >= self.min_len, text)
-        text = ('\n'.join(text) + '\n').replace('\n\n', '\n')
+        text = ('\n'.join(text) + '\n')
+        text = replace_all(text, '\n\n', '\n')
+        text = replace_all(text, '  ', ' ')
+
         text = text.encode('cp1251')
 
         return np.array([char for char in text])
@@ -32,7 +37,7 @@ class Dataset(torch.utils.data.Dataset):
         for index in indexes:
             while index + self.sequence_length < len(self.sequence):
                 advanced_indexes.append(index)
-                if self.sequence[index + self.sequence_length] == new_line_char_idx:
+                if new_line_char_idx in self.sequence[index:index + self.sequence_length]:
                     break
 
                 index = index + self.min_len
@@ -45,7 +50,7 @@ class Dataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         start = self.start_indexes[index]
         chunk = self.sequence[start:start + self.sequence_length + 1]
-        train = torch.LongTensor(chunk[:-1]).view(-1, 1)
+        train = torch.IntTensor(chunk[:-1]).view(-1, 1)
         target = torch.LongTensor(chunk[1:]).view(-1, 1)
 
         return train, target

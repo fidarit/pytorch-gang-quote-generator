@@ -1,5 +1,6 @@
 import argparse
 import os.path
+import random
 import signal
 import sys
 import torch
@@ -20,11 +21,13 @@ def train(dataset, model, args):
                             drop_last=True, shuffle=True, generator=torch.Generator(device=device))
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=1e-5)
+    sheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, verbose=True)
 
     loss_avg = []
     for epoch in range(args.max_epochs):
         for train, target in tqdm(dataloader):
+            optimizer.zero_grad()
             train = train.permute(1, 0, 2).to(device)
             target = target.permute(1, 0, 2).to(device)
 
@@ -33,10 +36,10 @@ def train(dataset, model, args):
 
             loss.backward()
             optimizer.step()
-            optimizer.zero_grad()
             loss_avg.append(loss.item())
 
         print({'epoch': epoch, 'loss_mean': np.mean(loss_avg), 'loss_median': np.median(loss_avg)})
+        sheduler.step()
         with torch.no_grad():
             print(evaluate(model, start_text='Я '))
             print(' ')
@@ -44,7 +47,6 @@ def train(dataset, model, args):
             print(' ')
             print(evaluate(model, start_text='Лучше '))
             print(' ')
-            model.train()
         torch.save(model.state_dict(), args.model)
 
 
@@ -63,7 +65,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--max-epochs', type=int, default=256)
-    parser.add_argument('--batch-size', type=int, default=64*8*2)
+    parser.add_argument('--batch-size', type=int, default=64*8)
     parser.add_argument('--sequence-length', type=int, default=128)
     parser.add_argument('--model', type=str, default='model.pth')
     parser.add_argument('--dataset', type=str, default='data/dataset_main.txt')
@@ -74,7 +76,7 @@ if __name__ == "__main__":
 
     input_size = 2**8
     dataset = Dataset(args.dataset, max_idx=input_size, seq_len=args.sequence_length)
-    model = Model(input_size=input_size, embedding_size=input_size).to(device)
+    model = Model(input_size=input_size, embedding_size=input_size*2).to(device)
 
     if os.path.isfile(args.model):
         model.load_state_dict(torch.load(args.model))

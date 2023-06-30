@@ -11,7 +11,7 @@ parser.add_argument('--model', type=str, default='model.pth')
 args = parser.parse_args()
 
 input_size = 2 ** 8
-model = Model(input_size=input_size, embedding_size=input_size, device=device).to(device)
+model = Model(input_size=input_size, embedding_size=input_size*2, device=device).to(device)
 
 text = ''
 while text != 'exit':

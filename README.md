@@ -1,4 +1,4 @@
-# "Pytorch gang quote generator"
+# Pytorch gang quote generator
 
 This project is an implementation of a text generator using a neural network. 
 The program trains the model on a given set of texts and allows you to generate new texts 
